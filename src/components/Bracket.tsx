@@ -17,12 +17,9 @@ interface Props {
   currentRound: number
 }
 
-const MATCHUP_H = 76
-const CONNECTOR_W = 28
-
 function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: number }) {
   return (
-    <div className="flex flex-col flex-shrink-0" style={{ width: CONNECTOR_W }}>
+    <div className="flex flex-col flex-shrink-0 w-4 md:w-6">
       {Array.from({ length: pairCount }).map((_, i) => (
         <div key={i} className="relative" style={{ height: pairHeight }}>
           <div className="absolute border-t border-ink-muted/30" style={{ top: '25%', left: 0, width: '50%' }} />
@@ -37,10 +34,7 @@ function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: n
 
 function InfoIcon({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5"
-    >
+    <button onClick={onClick} className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5">
       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="8" cy="8" r="6.5" />
         <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
@@ -128,28 +122,33 @@ export function Bracket({
 
   const isDone = alreadyVoted || submitted
 
-  // Shared: banners
-  const banners = (
-    <>
+  // Slot height: compact on mobile, spacious on desktop
+  // Mobile: 28px per slot = 56px per matchup
+  // Desktop: 37px per slot = 74px per matchup
+  const MATCHUP_H_MOBILE = 56
+  const MATCHUP_H_DESKTOP = 76
+
+  return (
+    <div className="py-4 md:py-8">
+      <div className="px-4 md:px-5 mb-3 md:mb-4">
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-ink mb-1">book bracket</h1>
+        <p className="text-ink-muted text-xs md:text-sm">{roundLabel(currentRound)}</p>
+      </div>
+
+      {/* Tie banner */}
       {hasTies && (
-        <div className="px-5 mb-4">
-          <div className="border border-error/30 bg-error/5 px-4 py-3">
+        <div className="px-4 md:px-5 mb-3">
+          <div className="border border-error/30 bg-error/5 px-3 py-2">
             {[...tiedMatchups, ...tiebreakerMatchups].map(m => {
               const bookA = bookMap.get(m.book_a!)!
               const bookB = bookMap.get(m.book_b!)!
               return (
                 <div key={m.id} className="mb-2 last:mb-0">
-                  <p className="text-xs text-error">
-                    {bookA.title} vs {bookB.title} is tied — we need a tiebreaker
-                  </p>
+                  <p className="text-xs text-error">{bookA.title} vs {bookB.title} — tied</p>
                   {session.role === 'organizer' && (
-                    <div className="flex gap-3 mt-1.5">
-                      <button onClick={() => onAdvance(m, bookA.id)} className="text-xs text-accent hover:text-accent-hover">
-                        advance "{bookA.title}"
-                      </button>
-                      <button onClick={() => onAdvance(m, bookB.id)} className="text-xs text-accent hover:text-accent-hover">
-                        advance "{bookB.title}"
-                      </button>
+                    <div className="flex gap-3 mt-1">
+                      <button onClick={() => onAdvance(m, bookA.id)} className="text-xs text-accent hover:text-accent-hover">advance "{bookA.title}"</button>
+                      <button onClick={() => onAdvance(m, bookB.id)} className="text-xs text-accent hover:text-accent-hover">advance "{bookB.title}"</button>
                     </div>
                   )}
                 </div>
@@ -159,240 +158,166 @@ export function Bracket({
         </div>
       )}
 
+      {/* Done banner */}
       {isDone && (
-        <div className="px-5 mb-4">
-          <div className="border border-accent/20 bg-accent/5 px-4 py-3">
+        <div className="px-4 md:px-5 mb-3">
+          <div className="border border-accent/20 bg-accent/5 px-3 py-2">
             <p className="text-xs text-accent">
-              you're all set for {roundLabel(currentRound)} — waiting on {members.length - membersDoneCount} more
-              {members.length - membersDoneCount === 1 ? ' person' : ' people'}
+              you're all set — waiting on {members.length - membersDoneCount} more
             </p>
           </div>
         </div>
       )}
-    </>
-  )
 
-  // Shared: book info popover
-  const bookInfoPopover = expandedBookId ? (() => {
-    const book = bookMap.get(expandedBookId)
-    if (!book) return null
-    return (
-      <div className="max-w-md mx-auto px-5 mt-2 mb-4">
-        <div className="border border-divider p-4 bg-cream-dark/30">
-          <div className="flex items-start gap-3 mb-2">
-            {book.cover_url && (
-              <img src={book.cover_url} alt="" className="w-10 h-14 object-cover flex-shrink-0" />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="font-serif text-sm text-ink leading-tight">{book.title}</h4>
-                  <p className="text-xs text-ink-light mt-0.5">{book.authors.join(', ')}</p>
-                </div>
-                <button onClick={() => setExpandedBookId(null)} className="text-ink-muted hover:text-ink text-xs ml-2 flex-shrink-0">×</button>
-              </div>
-            </div>
-          </div>
-          {book.pitch && <p className="text-xs text-ink-muted italic leading-relaxed mt-2">"{book.pitch}"</p>}
-          {book.page_count && <p className="text-[10px] text-ink-muted mt-1">{book.page_count} pages</p>}
-        </div>
-      </div>
-    )
-  })() : null
+      {/* Bracket — scrolls horizontally on all screens */}
+      <div className="overflow-x-auto px-3 md:px-5 pb-4">
+        <div className="flex">
+          {Array.from({ length: totalRounds }, (_, i) => i + 1).map((round) => {
+            const roundMatchups = matchups
+              .filter((m) => m.round === round)
+              .sort((a, b) => a.position - b.position)
 
-  return (
-    <div className="py-6">
-      <div className="px-5 mb-4">
-        <h1 className="font-serif text-3xl font-bold text-ink mb-1">book bracket</h1>
-        <p className="text-ink-muted text-sm">{roundLabel(currentRound)}</p>
-      </div>
-
-      {banners}
-
-      {/* ===== MOBILE: vertical card list ===== */}
-      <div className="md:hidden">
-        <div className="px-5 space-y-3">
-          {votableMatchups.map((matchup, i) => {
-            const bookA = matchup.book_a ? bookMap.get(matchup.book_a) ?? null : null
-            const bookB = matchup.book_b ? bookMap.get(matchup.book_b) ?? null : null
-            const myVote = myVotes[matchup.id] || null
-            const myPick = picks[matchup.id] || null
-            const activeChoice = myVote || myPick
-            const canPick = !myVote && !alreadyVoted
+            const isFutureRound = round > currentRound
+            const isCurrentRound = round === currentRound
 
             return (
-              <div key={matchup.id} className="border border-divider">
-                <p className="text-[10px] text-ink-muted px-3 pt-2 pb-1">matchup {i + 1}</p>
-                {[bookA, bookB].map((book) => {
-                  if (!book) return null
-                  const isActive = activeChoice === book.id
-                  return (
-                    <div
-                      key={book.id}
-                      onClick={() => canPick && handlePick(matchup.id, book.id)}
-                      className={`flex items-center gap-3 px-3 py-3 border-t border-divider/50 transition-all ${
-                        isActive
-                          ? 'bg-accent/5'
-                          : canPick
-                          ? 'hover:bg-accent/5 cursor-pointer'
-                          : ''
-                      }`}
-                    >
-                      <span className="text-ink-muted/60 w-4 text-right text-xs flex-shrink-0">{book.seed}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm truncate ${isActive ? 'text-accent font-medium' : 'text-ink'}`}>
-                          {book.title}
-                        </p>
-                        <p className="text-xs text-ink-light truncate">{book.authors.join(', ')}</p>
+              <Fragment key={round}>
+                <div className="flex flex-col flex-shrink-0">
+                  {roundMatchups.map((matchup) => {
+                    const bookA = matchup.book_a ? bookMap.get(matchup.book_a) ?? null : null
+                    const bookB = matchup.book_b ? bookMap.get(matchup.book_b) ?? null : null
+                    const isVoting = matchup.status === 'voting'
+                    const isComplete = matchup.status === 'complete'
+                    const myVote = myVotes[matchup.id] || null
+                    const myPick = picks[matchup.id] || null
+                    const activeChoice = myVote || myPick
+                    const canPick = isCurrentRound && isVoting && !myVote && !alreadyVoted
+
+                    const previewA = isFutureRound ? previewSlots[`${round}-${matchup.position}-a`] : null
+                    const previewB = isFutureRound ? previewSlots[`${round}-${matchup.position}-b`] : null
+                    const displayA = bookA || (previewA ? bookMap.get(previewA) ?? null : null)
+                    const displayB = bookB || (previewB ? bookMap.get(previewB) ?? null : null)
+                    const isPreviewA = !bookA && !!displayA
+                    const isPreviewB = !bookB && !!displayB
+
+                    const slotStyle = (book: Book | null, isPreview: boolean) => {
+                      if (!book) return 'text-ink-muted'
+                      if (isPreview) return 'text-accent/50'
+                      if (matchup.winner === book.id) return 'text-accent font-medium bg-accent/10'
+                      if (matchup.winner && matchup.winner !== book.id) return 'text-ink-muted line-through opacity-40'
+                      if (activeChoice === book.id) return 'text-accent bg-accent/5 font-medium'
+                      if (canPick) return 'text-ink hover:bg-accent/5 cursor-pointer'
+                      return 'text-ink'
+                    }
+
+                    const handleSlotClick = (e: React.MouseEvent, book: Book | null) => {
+                      if (!book || !canPick) return
+                      e.stopPropagation()
+                      handlePick(matchup.id, book.id)
+                    }
+
+                    // Use CSS classes for responsive height instead of inline styles
+                    // Mobile matchup height, desktop matchup height
+                    const mobileWrapperH = MATCHUP_H_MOBILE * Math.pow(2, round - 1)
+                    const desktopWrapperH = MATCHUP_H_DESKTOP * Math.pow(2, round - 1)
+
+                    return (
+                      <div
+                        key={matchup.id}
+                        className="flex items-center"
+                        style={{ height: mobileWrapperH }}
+                      >
+                        <div className={`w-40 md:w-56 border text-left transition-all ${
+                          isFutureRound ? 'border-divider/50 opacity-75'
+                            : isVoting && canPick ? 'border-accent/30'
+                            : isComplete ? 'border-divider opacity-70'
+                            : 'border-divider'
+                        }`}>
+                          {/* Slot A */}
+                          <div
+                            className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayA, isPreviewA)}`}
+                            onClick={(e) => handleSlotClick(e, bookA)}
+                          >
+                            <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayA?.seed ?? ''}</span>
+                            <span className="truncate flex-1">{displayA?.title ?? 'tbd'}</span>
+                            {bookA && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookA.id)} />}
+                            {activeChoice === bookA?.id && <span className="text-accent text-[7px] md:text-[8px] flex-shrink-0">●</span>}
+                          </div>
+                          <div className="border-t border-error/30" />
+                          {/* Slot B */}
+                          <div
+                            className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayB, isPreviewB)}`}
+                            onClick={(e) => handleSlotClick(e, bookB)}
+                          >
+                            <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayB?.seed ?? ''}</span>
+                            <span className="truncate flex-1">{displayB?.title ?? 'tbd'}</span>
+                            {bookB && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookB.id)} />}
+                            {activeChoice === bookB?.id && <span className="text-accent text-[7px] md:text-[8px] flex-shrink-0">●</span>}
+                          </div>
+                        </div>
                       </div>
-                      <InfoIcon onClick={(e) => toggleBookInfo(e, book.id)} />
-                      {isActive && <span className="text-accent text-xs flex-shrink-0">●</span>}
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+
+                {round < totalRounds && (
+                  <Connector
+                    pairCount={roundMatchups.length / 2}
+                    pairHeight={MATCHUP_H_MOBILE * Math.pow(2, round)}
+                  />
+                )}
+              </Fragment>
             )
           })}
         </div>
-
-        {bookInfoPopover}
-
-        {/* Mobile submit bar */}
-        {!isDone && (
-          <div className="fixed bottom-0 left-0 right-0 bg-cream border-t border-divider px-5 py-4 safe-area-bottom">
-            {allPicked ? (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium py-3 text-sm transition-colors"
-              >
-                {submitting ? 'submitting...' : 'submit votes'}
-              </button>
-            ) : (
-              <p className="text-xs text-ink-muted text-center">
-                {pickedCount} of {votableMatchups.length} picked — tap a book to choose a winner
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Bottom padding for fixed bar */}
-        {!isDone && <div className="h-20" />}
       </div>
 
-      {/* ===== DESKTOP: horizontal bracket ===== */}
-      <div className="hidden md:block">
-        <div className="flex">
-          <div className="overflow-x-auto px-5 pb-4 flex-1">
-            <div className="flex">
-              {Array.from({ length: totalRounds }, (_, i) => i + 1).map((round) => {
-                const roundMatchups = matchups
-                  .filter((m) => m.round === round)
-                  .sort((a, b) => a.position - b.position)
-
-                const wrapperH = MATCHUP_H * Math.pow(2, round - 1)
-                const isFutureRound = round > currentRound
-                const isCurrentRound = round === currentRound
-
-                return (
-                  <Fragment key={round}>
-                    <div className="flex flex-col flex-shrink-0">
-                      {roundMatchups.map((matchup) => {
-                        const bookA = matchup.book_a ? bookMap.get(matchup.book_a) ?? null : null
-                        const bookB = matchup.book_b ? bookMap.get(matchup.book_b) ?? null : null
-                        const isVoting = matchup.status === 'voting'
-                        const isComplete = matchup.status === 'complete'
-                        const myVote = myVotes[matchup.id] || null
-                        const myPick = picks[matchup.id] || null
-                        const activeChoice = myVote || myPick
-                        const canPick = isCurrentRound && isVoting && !myVote && !alreadyVoted
-
-                        const previewA = isFutureRound ? previewSlots[`${round}-${matchup.position}-a`] : null
-                        const previewB = isFutureRound ? previewSlots[`${round}-${matchup.position}-b`] : null
-                        const previewBookA = previewA ? bookMap.get(previewA) ?? null : null
-                        const previewBookB = previewB ? bookMap.get(previewB) ?? null : null
-                        const displayA = bookA || (isFutureRound ? previewBookA : null)
-                        const displayB = bookB || (isFutureRound ? previewBookB : null)
-                        const isPreviewA = !bookA && !!previewBookA
-                        const isPreviewB = !bookB && !!previewBookB
-
-                        const slotClasses = (book: Book | null, isPreview: boolean) => {
-                          const base = 'h-[37px] flex items-center gap-1.5 px-2.5 text-xs transition-all'
-                          if (!book) return `${base} text-ink-muted`
-                          if (isPreview) return `${base} text-accent/50`
-                          if (matchup.winner === book.id) return `${base} text-accent font-medium bg-accent/10`
-                          if (matchup.winner && matchup.winner !== book.id) return `${base} text-ink-muted line-through opacity-40`
-                          if (activeChoice === book.id) return `${base} text-accent bg-accent/5 font-medium`
-                          if (canPick) return `${base} text-ink hover:bg-accent/5 cursor-pointer`
-                          return `${base} text-ink`
-                        }
-
-                        const handleSlotClick = (e: React.MouseEvent, book: Book | null) => {
-                          if (!book || !canPick) return
-                          e.stopPropagation()
-                          handlePick(matchup.id, book.id)
-                        }
-
-                        return (
-                          <div key={matchup.id} className="flex items-center" style={{ height: wrapperH }}>
-                            <div className={`w-56 border text-left transition-all ${
-                              isFutureRound ? 'border-divider/50 opacity-75'
-                                : isVoting && canPick ? 'border-accent/30'
-                                : isComplete ? 'border-divider opacity-70'
-                                : 'border-divider'
-                            }`}>
-                              <div className={slotClasses(displayA, isPreviewA)} onClick={(e) => handleSlotClick(e, bookA)}>
-                                <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">{displayA?.seed ?? ''}</span>
-                                <span className="truncate flex-1">{displayA?.title ?? 'tbd'}</span>
-                                {bookA && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookA.id)} />}
-                                {activeChoice === bookA?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
-                              </div>
-                              <div className="border-t border-divider/50" />
-                              <div className={slotClasses(displayB, isPreviewB)} onClick={(e) => handleSlotClick(e, bookB)}>
-                                <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">{displayB?.seed ?? ''}</span>
-                                <span className="truncate flex-1">{displayB?.title ?? 'tbd'}</span>
-                                {bookB && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookB.id)} />}
-                                {activeChoice === bookB?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+      {/* Book info popover */}
+      {expandedBookId && (() => {
+        const book = bookMap.get(expandedBookId)
+        if (!book) return null
+        return (
+          <div className="max-w-md mx-auto px-4 md:px-5 mt-2 mb-4">
+            <div className="border border-divider p-3 md:p-4 bg-cream-dark/30">
+              <div className="flex items-start gap-3 mb-2">
+                {book.cover_url && <img src={book.cover_url} alt="" className="w-10 h-14 object-cover flex-shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-serif text-sm text-ink leading-tight">{book.title}</h4>
+                      <p className="text-xs text-ink-light mt-0.5">{book.authors.join(', ')}</p>
                     </div>
-                    {round < totalRounds && (
-                      <Connector pairCount={roundMatchups.length / 2} pairHeight={wrapperH * 2} />
-                    )}
-                  </Fragment>
-                )
-              })}
+                    <button onClick={() => setExpandedBookId(null)} className="text-ink-muted hover:text-ink text-xs ml-2 flex-shrink-0">×</button>
+                  </div>
+                </div>
+              </div>
+              {book.pitch && <p className="text-xs text-ink-muted italic leading-relaxed mt-2">"{book.pitch}"</p>}
+              {book.page_count && <p className="text-[10px] text-ink-muted mt-1">{book.page_count} pages</p>}
             </div>
           </div>
+        )
+      })()}
 
-          {/* Right sidebar: submit */}
-          {!isDone && (
-            <div className="flex-shrink-0 w-48 px-4 pt-2">
-              {allPicked ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium py-3 text-sm transition-colors"
-                >
-                  {submitting ? 'submitting...' : 'submit votes'}
-                </button>
-              ) : (
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  tap a book in each matchup to pick a winner, then submit
-                </p>
-              )}
-              {pickedCount > 0 && !allPicked && (
-                <p className="text-xs text-ink-muted mt-3">{pickedCount} of {votableMatchups.length} picked</p>
-              )}
-            </div>
+      {/* Submit area — below bracket on mobile, below on desktop too for simplicity */}
+      {!isDone && (
+        <div className="px-4 md:px-5 pt-4 border-t border-divider mt-2">
+          {allPicked ? (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full md:w-auto bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium py-3 px-8 text-sm transition-colors"
+            >
+              {submitting ? 'submitting...' : 'submit votes'}
+            </button>
+          ) : (
+            <p className="text-xs text-ink-muted">
+              {pickedCount > 0
+                ? `${pickedCount} of ${votableMatchups.length} picked — tap a book to choose`
+                : 'tap a book in each matchup to pick a winner'}
+            </p>
           )}
         </div>
-
-        {bookInfoPopover}
-      </div>
+      )}
     </div>
   )
 }

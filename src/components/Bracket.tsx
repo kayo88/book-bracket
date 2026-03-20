@@ -122,11 +122,8 @@ export function Bracket({
 
   const isDone = alreadyVoted || submitted
 
-  // Slot height: compact on mobile, spacious on desktop
-  // Mobile: 28px per slot = 56px per matchup
-  // Desktop: 37px per slot = 74px per matchup
-  const MATCHUP_H_MOBILE = 56
-  const MATCHUP_H_DESKTOP = 76
+  // Slot height: 28px per slot = 56px per matchup
+  const MATCHUP_H = 56
 
   return (
     <div className="py-4 md:py-8">
@@ -218,14 +215,13 @@ export function Bracket({
 
                     // Use CSS classes for responsive height instead of inline styles
                     // Mobile matchup height, desktop matchup height
-                    const mobileWrapperH = MATCHUP_H_MOBILE * Math.pow(2, round - 1)
-                    const desktopWrapperH = MATCHUP_H_DESKTOP * Math.pow(2, round - 1)
+                    const wrapperH = MATCHUP_H * Math.pow(2, round - 1)
 
                     return (
                       <div
                         key={matchup.id}
                         className="flex items-center"
-                        style={{ height: mobileWrapperH }}
+                        style={{ height: wrapperH }}
                       >
                         <div className={`w-40 md:w-56 border text-left transition-all ${
                           isFutureRound ? 'border-divider/50 opacity-75'
@@ -263,7 +259,7 @@ export function Bracket({
                 {round < totalRounds && (
                   <Connector
                     pairCount={roundMatchups.length / 2}
-                    pairHeight={MATCHUP_H_MOBILE * Math.pow(2, round)}
+                    pairHeight={MATCHUP_H * Math.pow(2, round)}
                   />
                 )}
               </Fragment>

@@ -47,17 +47,29 @@ export function Lobby({ session, books, totalBookCount, submittedNames, submissi
         <p className="text-ink-muted">
           {totalBookCount} of 16 books submitted
         </p>
-        {submittedNames.length > 0 && (
-          <p className="text-ink-muted text-xs mt-2">
-            {submittedNames.join(', ')}
-          </p>
-        )}
         {submissionDeadline && (
           <p className="text-ink-muted text-sm mt-1">
             submissions close {new Date(submissionDeadline).toLocaleDateString()}
           </p>
         )}
       </div>
+
+      {/* Submitted members */}
+      {submittedNames.filter(n => n.toLowerCase() !== session.displayName.toLowerCase()).length > 0 && (
+        <div className="mb-8">
+          <p className="text-xs text-ink-muted tracking-wide mb-2">submitted</p>
+          <ul className="space-y-1">
+            {submittedNames
+              .filter(n => n.toLowerCase() !== session.displayName.toLowerCase())
+              .map(name => (
+                <li key={name} className="text-xs text-ink-light flex items-center gap-1.5">
+                  <span className="text-green-500">&#10003;</span>
+                  {name}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       {/* Submission area */}
       {myBooks.length >= 2 ? (

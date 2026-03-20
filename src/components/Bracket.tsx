@@ -36,7 +36,7 @@ function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: n
 
 export function Bracket({
   matchups, books, session, members, myVotes, voteCounts,
-  allVotedMatchups, votes, onVote, onTiebreaker, onAdvance, currentRound,
+  allVotedMatchups, votes, onVote, onTiebreaker: _, onAdvance, currentRound,
 }: Props) {
   const bookMap = useMemo(() => new Map(books.map((b) => [b.id, b])), [books])
   const totalRounds = Math.max(...matchups.map((m) => m.round), 0)

@@ -54,38 +54,40 @@ export function Lobby({ session, books, members, totalBookCount, submissionDeadl
         )}
       </div>
 
-      {/* Submission area */}
-      {myBooks.length >= 2 ? (
-        <div className="mb-10">
-          <p className="text-ink-muted text-sm">you're all set — 2 books submitted.</p>
-        </div>
-      ) : !selectedBook ? (
-        <div className="mb-10">
-          <BookSearch
-            query={query}
-            setQuery={setQuery}
-            results={results}
-            searching={searching}
-            onSelect={handleSelect}
-            clearResults={clearResults}
-          />
-        </div>
-      ) : (
-        <div className="mb-10">
-          <PitchEditor
-            book={selectedBook}
-            initialPitch=""
-            onConfirm={handleConfirmSubmit}
-            onCancel={() => setSelectedBook(null)}
-          />
-          {submitting && (
-            <p className="text-ink-muted text-sm mt-2">submitting...</p>
-          )}
-        </div>
+      {/* Submission area — members only */}
+      {session.role !== 'organizer' && (
+        myBooks.length >= 2 ? (
+          <div className="mb-10">
+            <p className="text-ink-muted text-sm">you're all set — 2 books submitted.</p>
+          </div>
+        ) : !selectedBook ? (
+          <div className="mb-10">
+            <BookSearch
+              query={query}
+              setQuery={setQuery}
+              results={results}
+              searching={searching}
+              onSelect={handleSelect}
+              clearResults={clearResults}
+            />
+          </div>
+        ) : (
+          <div className="mb-10">
+            <PitchEditor
+              book={selectedBook}
+              initialPitch=""
+              onConfirm={handleConfirmSubmit}
+              onCancel={() => setSelectedBook(null)}
+            />
+            {submitting && (
+              <p className="text-ink-muted text-sm mt-2">submitting...</p>
+            )}
+          </div>
+        )
       )}
 
-      {/* My submissions — only your own books visible */}
-      {myBooks.length > 0 && (
+      {/* My submissions — members only */}
+      {session.role !== 'organizer' && myBooks.length > 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">your submissions</h2>
           <div className="divide-y divide-divider">

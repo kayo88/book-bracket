@@ -112,13 +112,14 @@ export function Lobby({ session, books, totalBookCount, submissionDeadline, onSu
       )}
 
       {/* Organizer controls */}
-      {session.role === 'organizer' && books.length >= 2 && (
+      {session.role === 'organizer' && (
         <div className="pt-8 border-t border-divider">
           <button
             onClick={onGenerateBracket}
-            className="w-full bg-accent hover:bg-accent-hover text-cream font-medium py-3 transition-colors duration-150"
+            disabled={totalBookCount < 16}
+            className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium py-3 transition-colors duration-150"
           >
-            generate bracket ({totalBookCount} books)
+            {totalBookCount < 16 ? `${totalBookCount} of 16 books — waiting` : 'generate bracket'}
           </button>
           <p className="text-ink-muted text-xs mt-2 text-center">
             this will randomize seedings and start the tournament.

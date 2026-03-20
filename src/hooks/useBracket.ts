@@ -40,6 +40,13 @@ export function useBracket(clubId: string | null) {
   const generate = useCallback(async (books: Book[]) => {
     if (!clubId) return
 
+    // Guard against double generation
+    const { count } = await supabase
+      .from('matchups')
+      .select('*', { count: 'exact', head: true })
+      .eq('club_id', clubId)
+    if (count && count > 0) return
+
     const { matchups: generated, seededBooks } = generateBracket(books)
 
     // Update seeds on books

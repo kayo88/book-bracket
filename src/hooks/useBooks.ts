@@ -75,6 +75,7 @@ export function useBooks(clubId: string | null) {
   }, [])
 
   const deleteBook = useCallback(async (bookId: string) => {
+    setBooks(prev => prev.filter(b => b.id !== bookId))
     await supabase.from('books').delete().eq('id', bookId)
   }, [])
 

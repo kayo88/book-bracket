@@ -19,7 +19,7 @@ interface Props {
 
 function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: number }) {
   return (
-    <div className="flex flex-col flex-shrink-0 w-4 md:w-6">
+    <div className="flex flex-col flex-shrink-0 w-4 md:w-8">
       {Array.from({ length: pairCount }).map((_, i) => (
         <div key={i} className="relative" style={{ height: pairHeight }}>
           <div className="absolute border-t border-ink-muted/30" style={{ top: '25%', left: 0, width: '50%' }} />
@@ -125,8 +125,10 @@ export function Bracket({
 
   const isDone = alreadyVoted || submitted
 
-  // Slot height: 28px per slot = 56px per matchup
-  const MATCHUP_H = 56
+  // Responsive matchup height: 56px mobile (h-7 slots), 80px desktop (h-10 slots)
+  const MATCHUP_H = useMemo(() => {
+    return window.matchMedia('(min-width: 768px)').matches ? 80 : 56
+  }, [])
 
   return (
     <div className="py-4 md:py-8">
@@ -234,7 +236,7 @@ export function Bracket({
                         }`}>
                           {/* Slot A */}
                           <div
-                            className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayA, isPreviewA)}`}
+                            className={`h-7 md:h-10 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-sm transition-all ${slotStyle(displayA, isPreviewA)}`}
                             onClick={(e) => {
                               const now = Date.now()
                               if (displayA && lastTapRef.current?.bookId === displayA.id && now - lastTapRef.current.time < 350) {
@@ -252,7 +254,7 @@ export function Bracket({
                           <div className="border-t border-error/30" />
                           {/* Slot B */}
                           <div
-                            className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayB, isPreviewB)}`}
+                            className={`h-7 md:h-10 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-sm transition-all ${slotStyle(displayB, isPreviewB)}`}
                             onClick={(e) => {
                               const now = Date.now()
                               if (displayB && lastTapRef.current?.bookId === displayB.id && now - lastTapRef.current.time < 350) {

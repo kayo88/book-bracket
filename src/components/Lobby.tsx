@@ -9,14 +9,13 @@ interface Props {
   session: Session
   books: Book[]
   totalBookCount: number
-  submittedNames: string[]
   submissionDeadline: string | null
   onSubmitBook: (book: GoogleBookResult, pitch: string | null) => Promise<void>
   onDeleteBook: (bookId: string) => void
   onGenerateBracket: () => void
 }
 
-export function Lobby({ session, books, totalBookCount, submittedNames, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
+export function Lobby({ session, books, totalBookCount, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
   const { query, setQuery, results, searching, clearResults } = useBookSearch()
   const [selectedBook, setSelectedBook] = useState<GoogleBookResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -53,23 +52,6 @@ export function Lobby({ session, books, totalBookCount, submittedNames, submissi
           </p>
         )}
       </div>
-
-      {/* Submitted members */}
-      {submittedNames.filter(n => n.toLowerCase() !== session.displayName.toLowerCase()).length > 0 && (
-        <div className="mb-8">
-          <p className="text-xs text-ink-muted tracking-wide mb-2">submitted</p>
-          <ul className="space-y-1">
-            {submittedNames
-              .filter(n => n.toLowerCase() !== session.displayName.toLowerCase())
-              .map(name => (
-                <li key={name} className="text-xs text-ink-light flex items-center gap-1.5">
-                  <span className="text-green-500">&#10003;</span>
-                  {name}
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
 
       {/* Submission area */}
       {myBooks.length >= 2 ? (

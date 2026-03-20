@@ -169,13 +169,34 @@ function App() {
   return (
     <>
       {/* Header bar */}
-      <div className="flex items-center justify-between px-5 py-3">
-        <span className="text-sm text-ink-light">
-          {session.displayName}
-          {session.role === 'organizer' && (
-            <span className="ml-1 text-accent text-xs">(organizer)</span>
-          )}
-        </span>
+      <div className="flex items-start justify-between px-5 py-3">
+        <div>
+          <span className="text-sm text-ink-light">
+            {session.displayName}
+            {session.role === 'organizer' && (
+              <span className="ml-1 text-accent text-xs">(organizer)</span>
+            )}
+          </span>
+          {club.phase === 'submissions' && (() => {
+            const submitterIds = new Set(books.map(b => b.submitted_by))
+            const otherNames = members
+              .filter(m => submitterIds.has(m.id) && m.id !== session.memberId)
+              .map(m => m.display_name)
+            return otherNames.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-[10px] text-ink-muted tracking-wide mb-1">submitted</p>
+                <ul className="space-y-0.5">
+                  {otherNames.map(name => (
+                    <li key={name} className="text-xs text-ink-light flex items-center gap-1">
+                      <span className="text-green-500 text-[10px]">&#10003;</span>
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
+          })()}
+        </div>
         <button
           onClick={logout}
           className="text-xs text-ink-muted hover:text-ink-light transition-colors duration-150"
@@ -189,10 +210,6 @@ function App() {
           session={session}
           books={books}
           totalBookCount={books.length}
-          submittedNames={(() => {
-            const submitterIds = new Set(books.map(b => b.submitted_by))
-            return members.filter(m => submitterIds.has(m.id)).map(m => m.display_name)
-          })()}
           submissionDeadline={club.submission_deadline}
           onSubmitBook={handleSubmitBook}
           onDeleteBook={deleteBook}

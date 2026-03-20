@@ -113,25 +113,8 @@ export function Bracket({
     setExpandedBookId(prev => prev === bookId ? null : bookId)
   }
 
-  // Long press for mobile book info
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const longPressTriggered = useRef(false)
-
-  const handleTouchStart = (bookId: string | null) => {
-    if (!bookId) return
-    longPressTriggered.current = false
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true
-      setExpandedBookId(prev => prev === bookId ? null : bookId)
-    }, 500)
-  }
-
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }
+  // Double tap for mobile book info
+  const lastTapRef = useRef<{ bookId: string; time: number } | null>(null)
 
   const roundLabel = (round: number) => {
     if (round === totalRounds) return 'final'
@@ -252,12 +235,14 @@ export function Bracket({
                           {/* Slot A */}
                           <div
                             className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayA, isPreviewA)}`}
-                            onTouchStart={() => handleTouchStart(displayA?.id ?? null)}
-                            onTouchEnd={handleTouchEnd}
-                            onTouchMove={handleTouchEnd}
-                            onTouchCancel={handleTouchEnd}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onClick={(e) => { if (longPressTriggered.current) { longPressTriggered.current = false; return } handleSlotClick(e, bookA) }}
+                            onClick={(e) => {
+                              const now = Date.now()
+                              if (displayA && lastTapRef.current?.bookId === displayA.id && now - lastTapRef.current.time < 350) {
+                                e.stopPropagation(); lastTapRef.current = null; setExpandedBookId(prev => prev === displayA.id ? null : displayA.id); return
+                              }
+                              lastTapRef.current = displayA ? { bookId: displayA.id, time: now } : null
+                              handleSlotClick(e, bookA)
+                            }}
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayA?.seed ?? ''}</span>
                             <span className="truncate flex-1">{displayA?.title ?? 'tbd'}</span>
@@ -268,12 +253,14 @@ export function Bracket({
                           {/* Slot B */}
                           <div
                             className={`h-7 md:h-9 flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 text-[11px] md:text-xs transition-all ${slotStyle(displayB, isPreviewB)}`}
-                            onTouchStart={() => handleTouchStart(displayB?.id ?? null)}
-                            onTouchEnd={handleTouchEnd}
-                            onTouchMove={handleTouchEnd}
-                            onTouchCancel={handleTouchEnd}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onClick={(e) => { if (longPressTriggered.current) { longPressTriggered.current = false; return } handleSlotClick(e, bookB) }}
+                            onClick={(e) => {
+                              const now = Date.now()
+                              if (displayB && lastTapRef.current?.bookId === displayB.id && now - lastTapRef.current.time < 350) {
+                                e.stopPropagation(); lastTapRef.current = null; setExpandedBookId(prev => prev === displayB.id ? null : displayB.id); return
+                              }
+                              lastTapRef.current = displayB ? { bookId: displayB.id, time: now } : null
+                              handleSlotClick(e, bookB)
+                            }}
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayB?.seed ?? ''}</span>
                             <span className="truncate flex-1">{displayB?.title ?? 'tbd'}</span>

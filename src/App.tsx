@@ -171,7 +171,10 @@ function App() {
       {/* Header bar */}
       <div className="flex items-start justify-between px-5 py-3">
         <div>
-          <span className="text-sm text-ink-light">
+          <span className="text-sm text-ink-light flex items-center gap-1">
+            {club.phase === 'submissions' && books.some(b => b.submitted_by === session.memberId) && (
+              <span className="text-green-500 text-[10px]">&#10003;</span>
+            )}
             {session.displayName}
             {session.role === 'organizer' && (
               <span className="ml-1 text-accent text-xs">(organizer)</span>

@@ -221,7 +221,7 @@ function App() {
         />
       )}
 
-      {club.phase === 'bracket' && (
+      {club.phase === 'bracket' && session.role === 'organizer' && (
         <Bracket
           matchups={matchups}
           books={books}
@@ -235,6 +235,13 @@ function App() {
           onAdvance={handleAdvance}
           currentRound={club.current_round}
         />
+      )}
+
+      {club.phase === 'bracket' && session.role !== 'organizer' && (
+        <div className="max-w-lg mx-auto px-5 py-16 text-center">
+          <h1 className="font-serif text-3xl font-bold text-ink mb-2">book bracket</h1>
+          <p className="text-ink-muted text-sm">the bracket is being set up — hang tight.</p>
+        </div>
       )}
 
       {club.phase === 'complete' && (

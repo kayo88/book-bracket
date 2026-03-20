@@ -85,7 +85,8 @@ export function PitchEditor({ book, initialPitch, onConfirm, onCancel }: Props) 
         </button>
         <button
           onClick={() => onConfirm(pitch)}
-          className="text-sm bg-accent hover:bg-accent-hover text-cream font-medium px-5 py-2 transition-colors duration-150"
+          disabled={!pitch.trim()}
+          className="text-sm bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium px-5 py-2 transition-colors duration-150"
         >
           submit
         </button>

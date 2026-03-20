@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Book, Session, GoogleBookResult, Member } from '../lib/types'
+import type { Book, Session, GoogleBookResult } from '../lib/types'
 import { BookSearch } from './BookSearch'
 import { BookCard } from './BookCard'
 import { PitchEditor } from './PitchEditor'
@@ -8,14 +8,14 @@ import { useBookSearch } from '../hooks/useBookSearch'
 interface Props {
   session: Session
   books: Book[]
-  members: Member[]
+  totalBookCount: number
   submissionDeadline: string | null
   onSubmitBook: (book: GoogleBookResult, pitch: string | null) => Promise<void>
   onDeleteBook: (bookId: string) => void
   onGenerateBracket: () => void
 }
 
-export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
+export function Lobby({ session, books, totalBookCount, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
   const { query, setQuery, results, searching, clearResults } = useBookSearch()
   const [selectedBook, setSelectedBook] = useState<GoogleBookResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -44,7 +44,7 @@ export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDele
       <div className="mb-12">
         <h1 className="font-serif text-3xl font-bold text-ink mb-1">book bracket</h1>
         <p className="text-ink-muted">
-          {books.length}/16 books submitted
+          {totalBookCount} of 16 books submitted
         </p>
         {submissionDeadline && (
           <p className="text-ink-muted text-sm mt-1">
@@ -79,7 +79,7 @@ export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDele
         </div>
       )}
 
-      {/* My submissions */}
+      {/* My submissions — only your own books visible */}
       {myBooks.length > 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">your submissions</h2>
@@ -95,18 +95,6 @@ export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDele
         </div>
       )}
 
-      {/* All submissions */}
-      {books.length > 0 && (
-        <div className="mb-10">
-          <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">all submissions</h2>
-          <div className="divide-y divide-divider">
-            {books.map((book) => (
-              <BookCard key={book.id} book={book} />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Organizer controls */}
       {session.role === 'organizer' && books.length >= 2 && (
         <div className="pt-8 border-t border-divider">
@@ -114,7 +102,7 @@ export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDele
             onClick={onGenerateBracket}
             className="w-full bg-accent hover:bg-accent-hover text-cream font-medium py-3 transition-colors duration-150"
           >
-            generate bracket ({books.length} books)
+            generate bracket ({totalBookCount} books)
           </button>
           <p className="text-ink-muted text-xs mt-2 text-center">
             this will randomize seedings and start the tournament.

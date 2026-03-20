@@ -188,7 +188,7 @@ function App() {
         <Lobby
           session={session}
           books={books}
-          members={members}
+          totalBookCount={books.length}
           submissionDeadline={club.submission_deadline}
           onSubmitBook={handleSubmitBook}
           onDeleteBook={deleteBook}

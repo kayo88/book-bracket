@@ -189,6 +189,10 @@ function App() {
           session={session}
           books={books}
           totalBookCount={books.length}
+          submittedNames={(() => {
+            const submitterIds = new Set(books.map(b => b.submitted_by))
+            return members.filter(m => submitterIds.has(m.id)).map(m => m.display_name)
+          })()}
           submissionDeadline={club.submission_deadline}
           onSubmitBook={handleSubmitBook}
           onDeleteBook={deleteBook}

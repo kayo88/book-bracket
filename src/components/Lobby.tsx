@@ -9,13 +9,14 @@ interface Props {
   session: Session
   books: Book[]
   totalBookCount: number
+  submittedNames: string[]
   submissionDeadline: string | null
   onSubmitBook: (book: GoogleBookResult, pitch: string | null) => Promise<void>
   onDeleteBook: (bookId: string) => void
   onGenerateBracket: () => void
 }
 
-export function Lobby({ session, books, totalBookCount, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
+export function Lobby({ session, books, totalBookCount, submittedNames, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
   const { query, setQuery, results, searching, clearResults } = useBookSearch()
   const [selectedBook, setSelectedBook] = useState<GoogleBookResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -46,6 +47,11 @@ export function Lobby({ session, books, totalBookCount, submissionDeadline, onSu
         <p className="text-ink-muted">
           {totalBookCount} of 16 books submitted
         </p>
+        {submittedNames.length > 0 && (
+          <p className="text-ink-muted text-xs mt-2">
+            {submittedNames.join(', ')}
+          </p>
+        )}
         {submissionDeadline && (
           <p className="text-ink-muted text-sm mt-1">
             submissions close {new Date(submissionDeadline).toLocaleDateString()}

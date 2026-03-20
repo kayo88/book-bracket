@@ -54,8 +54,8 @@ export function Lobby({ session, books, members, totalBookCount, submissionDeadl
         )}
       </div>
 
-      {/* Submission area — members only */}
-      {session.role !== 'organizer' && (
+      {/* Submission area */}
+      {(
         myBooks.length >= 2 ? (
           <div className="mb-10">
             <p className="text-ink-muted text-sm">you're all set — 2 books submitted.</p>
@@ -86,8 +86,8 @@ export function Lobby({ session, books, members, totalBookCount, submissionDeadl
         )
       )}
 
-      {/* My submissions — members only */}
-      {session.role !== 'organizer' && myBooks.length > 0 && (
+      {/* My submissions */}
+      {myBooks.length > 0 && (
         <div className="mb-10">
           <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">your submissions</h2>
           <div className="divide-y divide-divider">

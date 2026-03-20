@@ -61,7 +61,7 @@ export function Bracket({
   // How many members have voted on ALL votable matchups?
   const membersDoneCount = useMemo(() => {
     if (votableMatchups.length === 0) return 0
-    const votingMembers = members.filter(m => m.role !== 'organizer')
+    const votingMembers = members
     return votingMembers.filter(member => {
       return votableMatchups.every(matchup =>
         votes.some(v => v.matchup_id === matchup.id && v.member_id === member.id)
@@ -94,7 +94,7 @@ export function Bracket({
     setExpandedBookId(prev => prev === bookId ? null : bookId)
   }
 
-  const votingMembers = members.filter(m => m.role !== 'organizer')
+  const votingMembers = members
 
   return (
     <div className="py-8">

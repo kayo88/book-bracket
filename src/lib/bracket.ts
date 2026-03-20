@@ -42,14 +42,15 @@ export function generateBracket(books: Book[]): {
 
   const matchups: GeneratedMatchup[] = []
 
-  // Round 1: pair up books
-  const round1Count = padded.length / 2
+  // Round 1: seed-mirrored pairings (1v16, 2v15, 3v14, ...)
+  const n = padded.length
+  const round1Count = n / 2
   for (let i = 0; i < round1Count; i++) {
     matchups.push({
       round: 1,
       position: i,
-      book_a: padded[i * 2]?.id || null,
-      book_b: padded[i * 2 + 1]?.id || null,
+      book_a: padded[i]?.id || null,
+      book_b: padded[n - 1 - i]?.id || null,
     })
   }
 

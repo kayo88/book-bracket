@@ -32,9 +32,9 @@ function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: n
   )
 }
 
-function InfoIcon({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+function InfoIcon({ onClick, className = '' }: { onClick: (e: React.MouseEvent) => void; className?: string }) {
   return (
-    <button onClick={onClick} className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5">
+    <button onClick={onClick} className={`text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5 ${className}`}>
       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="8" cy="8" r="6.5" />
         <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
@@ -223,7 +223,7 @@ export function Bracket({
                         className="flex items-center"
                         style={{ height: wrapperH }}
                       >
-                        <div className={`w-40 md:w-56 border text-left transition-all ${
+                        <div className={`${round === 1 ? 'w-48' : 'w-32'} md:w-56 border text-left transition-all ${
                           isFutureRound ? 'border-divider/50 opacity-75'
                             : isVoting && canPick ? 'border-accent/30'
                             : isComplete ? 'border-divider opacity-70'
@@ -236,7 +236,7 @@ export function Bracket({
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayA?.seed ?? ''}</span>
                             <span className="truncate flex-1">{displayA?.title ?? 'tbd'}</span>
-                            {bookA && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookA.id)} />}
+                            {bookA && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookA.id)} className="hidden md:inline-flex" />}
                             {activeChoice === bookA?.id && <span className="text-accent text-[7px] md:text-[8px] flex-shrink-0">●</span>}
                           </div>
                           <div className="border-t border-error/30" />
@@ -247,7 +247,7 @@ export function Bracket({
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[9px] md:text-[10px] flex-shrink-0">{displayB?.seed ?? ''}</span>
                             <span className="truncate flex-1">{displayB?.title ?? 'tbd'}</span>
-                            {bookB && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookB.id)} />}
+                            {bookB && !isFutureRound && <InfoIcon onClick={(e) => toggleBookInfo(e, bookB.id)} className="hidden md:inline-flex" />}
                             {activeChoice === bookB?.id && <span className="text-accent text-[7px] md:text-[8px] flex-shrink-0">●</span>}
                           </div>
                         </div>

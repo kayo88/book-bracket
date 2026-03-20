@@ -213,7 +213,7 @@ export function Bracket({
                       const slotClasses = (book: Book | null, isPreview: boolean) => {
                         const base = 'h-[37px] flex items-center gap-1.5 px-2.5 text-xs transition-all'
                         if (!book) return `${base} text-ink-muted`
-                        if (isPreview) return `${base} text-accent/60 italic`
+                        if (isPreview) return `${base} text-accent/50`
                         if (matchup.winner === book.id) return `${base} text-accent font-medium bg-accent/10`
                         if (matchup.winner && matchup.winner !== book.id) return `${base} text-ink-muted line-through opacity-40`
                         if (activeChoice === book.id) return `${base} text-accent bg-accent/5 font-medium`
@@ -236,7 +236,7 @@ export function Bracket({
                           <div
                             className={`w-56 border text-left transition-all ${
                               isFutureRound
-                                ? 'border-divider/30 opacity-50'
+                                ? 'border-divider/50 opacity-75'
                                 : isVoting && canPick
                                 ? 'border-accent/30'
                                 : isComplete

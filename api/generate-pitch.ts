@@ -1,0 +1,72 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+
+async function getOpenLibraryDescription(title: string, author: string): Promise<string | null> {
+  try {
+    const q = encodeURIComponent(`${title} ${author}`)
+    const searchRes = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=key`)
+    if (!searchRes.ok) return null
+    const searchData = await searchRes.json()
+    const workKey = searchData.docs?.[0]?.key
+    if (!workKey) return null
+
+    const workRes = await fetch(`https://openlibrary.org${workKey}.json`)
+    if (!workRes.ok) return null
+    const workData = await workRes.json()
+    const desc = typeof workData.description === 'string'
+      ? workData.description
+      : workData.description?.value || null
+    return desc || null
+  } catch {
+    return null
+  }
+}
+
+async function summarize(title: string, author: string, description: string | null): Promise<string> {
+  const context = description
+    ? `Here is a description of the book:\n${description}`
+    : `No description available.`
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      messages: [{
+        role: 'user',
+        content: `You're writing a pitch for a book club voting bracket. Write exactly 3 sentences about "${title}" by ${author}.
+
+Sentence 1-2: Summarize what the book is about. Plain, factual, lowercase. No hype.
+Sentence 3: A short casual hook — why someone should actually read this. Write it like a chill friend texting: lowercase, no punctuation formality, maybe a fragment. Examples of the vibe: "lowkey one of the best paced books ive read in a minute." or "if you liked severance this is that energy but funnier." or "trust me on this one." Keep it natural, not salesy.
+
+${context}`,
+      }],
+    }),
+  })
+
+  if (!res.ok) return `${title} by ${author}.`
+
+  const data = await res.json()
+  return data.content?.[0]?.text?.trim() || `${title} by ${author}.`
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { title, authors, description } = req.body || {}
+  if (!title) {
+    return res.status(400).json({ error: 'Title required' })
+  }
+
+  const author = authors?.[0] || 'someone mysterious'
+  const olDesc = await getOpenLibraryDescription(title, author)
+  const pitch = await summarize(title, author, olDesc || description)
+
+  return res.status(200).json({ pitch })
+}

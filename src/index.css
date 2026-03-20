@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #F5F2EF;
+  --color-cream-dark: #EDEAE6;
+  --color-ink: #1A1A1A;
+  --color-ink-light: #6B6560;
+  --color-ink-muted: #9B9590;
+  --color-accent: #C4846C;
+  --color-accent-hover: #B3745C;
+  --color-divider: #E0DCD8;
+  --color-error: #C25B50;
+  --font-serif: 'Libre Baskerville', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  @apply bg-cream text-ink min-h-screen antialiased;
+  font-family: var(--font-sans);
+  text-transform: lowercase;
+}
+
+::selection {
+  background: #C4846C33;
+}
+
+input, textarea {
+  text-transform: lowercase;
+}
+
+input::placeholder, textarea::placeholder {
+  text-transform: lowercase;
+}

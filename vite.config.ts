@@ -2,31 +2,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-async function getOpenLibraryDescription(title: string, author: string): Promise<string | null> {
-  try {
-    const q = encodeURIComponent(`${title} ${author}`)
-    const searchRes = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=key`)
-    if (!searchRes.ok) return null
-    const searchData = (await searchRes.json()) as { docs?: { key?: string }[] }
-    const workKey = searchData.docs?.[0]?.key
-    if (!workKey) return null
-
-    const workRes = await fetch(`https://openlibrary.org${workKey}.json`)
-    if (!workRes.ok) return null
-    const workData = (await workRes.json()) as { description?: string | { value?: string } }
-    const desc = typeof workData.description === 'string'
-      ? workData.description
-      : workData.description?.value || null
-    return desc || null
-  } catch {
-    return null
-  }
-}
-
 async function summarize(title: string, author: string, description: string | null, apiKey: string): Promise<string> {
-  const context = description
-    ? `Here is a description of the book:\n${description}`
-    : `No description available.`
+  const context = description ? `Description: ${description}` : ''
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -37,15 +14,12 @@ async function summarize(title: string, author: string, description: string | nu
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      max_tokens: 100,
       messages: [{
         role: 'user',
-        content: `You're writing a pitch for a book club voting bracket. Write exactly 3 sentences about "${title}" by ${author}.
+        content: `"${title}" by ${author}. ${context}
 
-Sentence 1-2: Summarize what the book is about. Plain, factual, lowercase. No hype.
-Sentence 3: A short casual hook — why someone should actually read this. Write it like a chill friend texting: lowercase, no punctuation formality, maybe a fragment. Examples of the vibe: "lowkey one of the best paced books ive read in a minute." or "if you liked severance this is that energy but funnier." or "trust me on this one." Keep it natural, not salesy.
-
-${context}`,
+Write a 3-sentence book pitch. Sentences 1-2: what it's about, plain and lowercase. Sentence 3: casual hook like a friend texting, lowercase, no hype. Keep the whole thing under 40 words.`,
       }],
     }),
   })
@@ -99,9 +73,7 @@ function apiDevPlugin(): Plugin {
         const { title, authors, description } = JSON.parse(pitchBody || '{}')
 
         const author = authors?.[0] || 'someone mysterious'
-
-        const olDesc = await getOpenLibraryDescription(title, author)
-        const pitch = await summarize(title, author, olDesc || description, env.ANTHROPIC_API_KEY || '')
+        const pitch = await summarize(title, author, description, env.ANTHROPIC_API_KEY || '')
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ pitch }))
       })

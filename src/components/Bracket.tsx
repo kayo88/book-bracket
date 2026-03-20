@@ -1,5 +1,6 @@
-import { Fragment, useState, useMemo } from 'react'
+import { Fragment, useState, useMemo, useCallback } from 'react'
 import type { Matchup as MatchupType, Book, Session, Member, Vote } from '../lib/types'
+import { getNextMatchup } from '../lib/bracket'
 
 interface Props {
   matchups: MatchupType[]
@@ -41,35 +42,29 @@ export function Bracket({
   const bookMap = useMemo(() => new Map(books.map((b) => [b.id, b])), [books])
   const totalRounds = Math.max(...matchups.map((m) => m.round), 0)
 
+  // Local picks before submitting
+  const [picks, setPicks] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [expandedBookId, setExpandedBookId] = useState<string | null>(null)
-  const [justVoted, setJustVoted] = useState<string | null>(null)
 
-  const roundLabel = (round: number) => {
-    if (round === totalRounds) return 'final'
-    if (round === totalRounds - 1) return 'semis'
-    if (round === totalRounds - 2) return 'quarters'
-    return `round ${round}`
-  }
-
-  // Current round matchups that need votes (not pending/complete)
   const currentRoundMatchups = matchups.filter(m => m.round === currentRound)
   const votableMatchups = currentRoundMatchups.filter(m => m.status === 'voting')
 
-  // Has the current user voted on all votable matchups?
-  const myDone = votableMatchups.length > 0 && votableMatchups.every(m => myVotes[m.id])
+  // Already submitted votes for this round?
+  const alreadyVoted = votableMatchups.length > 0 && votableMatchups.every(m => myVotes[m.id])
 
-  // How many members have voted on ALL votable matchups?
+  // How many members have voted on ALL current round matchups?
   const membersDoneCount = useMemo(() => {
     if (votableMatchups.length === 0) return 0
-    const votingMembers = members
-    return votingMembers.filter(member => {
-      return votableMatchups.every(matchup =>
+    return members.filter(member =>
+      votableMatchups.every(matchup =>
         votes.some(v => v.matchup_id === matchup.id && v.member_id === member.id)
       )
-    }).length
+    ).length
   }, [votes, votableMatchups, members])
 
-  // Tied matchups (all voted but no clear winner)
+  // Tied matchups
   const tiedMatchups = currentRoundMatchups.filter(m => {
     if (m.winner || m.status !== 'voting') return false
     if (!allVotedMatchups.has(m.id)) return false
@@ -79,30 +74,55 @@ export function Bracket({
     const counts = voteCounts[m.id] || {}
     return (counts[bookA.id] || 0) === (counts[bookB.id] || 0)
   })
-
   const tiebreakerMatchups = currentRoundMatchups.filter(m => m.status === 'tiebreaker')
   const hasTies = tiedMatchups.length > 0 || tiebreakerMatchups.length > 0
 
-  const handleVote = (matchupId: string, bookId: string) => {
-    onVote(matchupId, bookId)
-    setJustVoted(bookId)
-    setTimeout(() => setJustVoted(null), 1200)
+  // Build preview map: which books show in future rounds based on picks
+  const previewSlots = useMemo(() => {
+    const map: Record<string, string> = {} // key: "round-position-slot" → bookId
+    for (const matchup of votableMatchups) {
+      const pickId = myVotes[matchup.id] || picks[matchup.id]
+      if (pickId) {
+        const next = getNextMatchup(matchup.round, matchup.position)
+        map[`${next.round}-${next.position}-${next.slot}`] = pickId
+      }
+    }
+    return map
+  }, [votableMatchups, picks, myVotes])
+
+  // All votable matchups have a pick?
+  const allPicked = votableMatchups.length > 0 && votableMatchups.every(m => picks[m.id] || myVotes[m.id])
+
+  const handlePick = (matchupId: string, bookId: string) => {
+    setPicks(prev => ({ ...prev, [matchupId]: bookId }))
   }
+
+  const handleSubmit = useCallback(async () => {
+    setSubmitting(true)
+    for (const [matchupId, bookId] of Object.entries(picks)) {
+      await onVote(matchupId, bookId)
+    }
+    setSubmitted(true)
+    setSubmitting(false)
+  }, [picks, onVote])
 
   const toggleBookInfo = (e: React.MouseEvent, bookId: string) => {
     e.stopPropagation()
     setExpandedBookId(prev => prev === bookId ? null : bookId)
   }
 
-  const votingMembers = members
+  const roundLabel = (round: number) => {
+    if (round === totalRounds) return 'final'
+    if (round === totalRounds - 1) return 'semis'
+    if (round === totalRounds - 2) return 'quarters'
+    return `round ${round}`
+  }
 
   return (
     <div className="py-8">
       <div className="px-5 mb-4">
         <h1 className="font-serif text-3xl font-bold text-ink mb-1">book bracket</h1>
-        <p className="text-ink-muted text-sm">
-          {roundLabel(currentRound)}
-        </p>
+        <p className="text-ink-muted text-sm">{roundLabel(currentRound)}</p>
       </div>
 
       {/* Tie banner */}
@@ -140,151 +160,179 @@ export function Bracket({
         </div>
       )}
 
-      {/* "You're done" banner */}
-      {myDone && !hasTies && (
+      {/* Already voted / waiting banner */}
+      {(alreadyVoted || submitted) && (
         <div className="px-5 mb-4">
           <div className="border border-accent/20 bg-accent/5 px-4 py-3">
             <p className="text-xs text-accent">
-              you're all set for {roundLabel(currentRound)} — {membersDoneCount} of {votingMembers.length} have voted so far
+              you're all set for {roundLabel(currentRound)} — waiting on {members.length - membersDoneCount} more
+              {members.length - membersDoneCount === 1 ? ' person' : ' people'}
             </p>
           </div>
         </div>
       )}
 
-      {/* Bracket */}
-      <div className="overflow-x-auto px-5 pb-4">
-        <div className="flex">
-          {Array.from({ length: totalRounds }, (_, i) => i + 1).map((round) => {
-            const roundMatchups = matchups
-              .filter((m) => m.round === round)
-              .sort((a, b) => a.position - b.position)
+      <div className="flex">
+        {/* Bracket */}
+        <div className="overflow-x-auto px-5 pb-4 flex-1">
+          <div className="flex">
+            {Array.from({ length: totalRounds }, (_, i) => i + 1).map((round) => {
+              const roundMatchups = matchups
+                .filter((m) => m.round === round)
+                .sort((a, b) => a.position - b.position)
 
-            const wrapperH = MATCHUP_H * Math.pow(2, round - 1)
+              const wrapperH = MATCHUP_H * Math.pow(2, round - 1)
+              const isFutureRound = round > currentRound
+              const isCurrentRound = round === currentRound
 
-            return (
-              <Fragment key={round}>
-                <div className="flex flex-col flex-shrink-0">
-                  {roundMatchups.map((matchup) => {
-                    const bookA = matchup.book_a ? bookMap.get(matchup.book_a) ?? null : null
-                    const bookB = matchup.book_b ? bookMap.get(matchup.book_b) ?? null : null
-                    const isVoting = matchup.status === 'voting'
-                    const isComplete = matchup.status === 'complete'
-                    const isTiebreaker = matchup.status === 'tiebreaker'
-                    const isTied = tiedMatchups.some(t => t.id === matchup.id)
-                    const myVote = myVotes[matchup.id] || null
-                    const canVote = isVoting && !myVote && !isTied
-                    const counts = voteCounts[matchup.id] || {}
-                    const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0)
+              return (
+                <Fragment key={round}>
+                  <div className="flex flex-col flex-shrink-0">
+                    {roundMatchups.map((matchup) => {
+                      const bookA = matchup.book_a ? bookMap.get(matchup.book_a) ?? null : null
+                      const bookB = matchup.book_b ? bookMap.get(matchup.book_b) ?? null : null
+                      const isVoting = matchup.status === 'voting'
+                      const isComplete = matchup.status === 'complete'
+                      const myVote = myVotes[matchup.id] || null
+                      const myPick = picks[matchup.id] || null
+                      const activeChoice = myVote || myPick
+                      const canPick = isCurrentRound && isVoting && !myVote && !alreadyVoted
 
-                    const slotClasses = (book: Book | null) => {
-                      const base = 'h-[37px] flex items-center gap-1.5 px-2.5 text-xs transition-all'
-                      if (!book) return `${base} text-ink-muted`
-                      if (matchup.winner === book.id) return `${base} text-accent font-medium bg-accent/10`
-                      if (matchup.winner && matchup.winner !== book.id) return `${base} text-ink-muted line-through opacity-40`
-                      if (justVoted === book.id) return `${base} text-accent bg-accent/10`
-                      if (myVote === book.id) return `${base} text-ink bg-accent/5 font-medium`
-                      if (canVote) return `${base} text-ink hover:bg-accent/5 cursor-pointer`
-                      return `${base} text-ink`
-                    }
+                      // For future rounds, check preview slots
+                      const previewA = isFutureRound ? previewSlots[`${round}-${matchup.position}-a`] : null
+                      const previewB = isFutureRound ? previewSlots[`${round}-${matchup.position}-b`] : null
+                      const previewBookA = previewA ? bookMap.get(previewA) ?? null : null
+                      const previewBookB = previewB ? bookMap.get(previewB) ?? null : null
 
-                    const handleSlotClick = (e: React.MouseEvent, book: Book | null) => {
-                      if (!book || !canVote) return
-                      e.stopPropagation()
-                      handleVote(matchup.id, book.id)
-                    }
+                      // What to show in each slot
+                      const displayA = bookA || (isFutureRound ? previewBookA : null)
+                      const displayB = bookB || (isFutureRound ? previewBookB : null)
+                      const isPreviewA = !bookA && !!previewBookA
+                      const isPreviewB = !bookB && !!previewBookB
 
-                    return (
-                      <div
-                        key={matchup.id}
-                        className="flex items-center"
-                        style={{ height: wrapperH }}
-                      >
+                      const slotClasses = (book: Book | null, isPreview: boolean) => {
+                        const base = 'h-[37px] flex items-center gap-1.5 px-2.5 text-xs transition-all'
+                        if (!book) return `${base} text-ink-muted`
+                        if (isPreview) return `${base} text-accent/60 italic`
+                        if (matchup.winner === book.id) return `${base} text-accent font-medium bg-accent/10`
+                        if (matchup.winner && matchup.winner !== book.id) return `${base} text-ink-muted line-through opacity-40`
+                        if (activeChoice === book.id) return `${base} text-accent bg-accent/5 font-medium`
+                        if (canPick) return `${base} text-ink hover:bg-accent/5 cursor-pointer`
+                        return `${base} text-ink`
+                      }
+
+                      const handleSlotClick = (e: React.MouseEvent, book: Book | null) => {
+                        if (!book || !canPick) return
+                        e.stopPropagation()
+                        handlePick(matchup.id, book.id)
+                      }
+
+                      return (
                         <div
-                          className={`w-56 border text-left transition-all ${
-                            isTied || isTiebreaker
-                              ? 'border-error/40'
-                              : isVoting
-                              ? 'border-accent/30'
-                              : isComplete
-                              ? 'border-divider opacity-70'
-                              : 'border-divider/50'
-                          }`}
+                          key={matchup.id}
+                          className="flex items-center"
+                          style={{ height: wrapperH }}
                         >
-                          {/* Slot A */}
                           <div
-                            className={slotClasses(bookA)}
-                            onClick={(e) => handleSlotClick(e, bookA)}
+                            className={`w-56 border text-left transition-all ${
+                              isFutureRound
+                                ? 'border-divider/30 opacity-50'
+                                : isVoting && canPick
+                                ? 'border-accent/30'
+                                : isComplete
+                                ? 'border-divider opacity-70'
+                                : 'border-divider'
+                            }`}
                           >
-                            <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
-                              {bookA?.seed ?? ''}
-                            </span>
-                            <span className="truncate flex-1">{bookA?.title ?? 'tbd'}</span>
-                            {bookA && (
-                              <button
-                                onClick={(e) => toggleBookInfo(e, bookA.id)}
-                                className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5"
-                                title="book info"
-                              >
-                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                  <circle cx="8" cy="8" r="6.5" />
-                                  <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            )}
-                            {myVote === bookA?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
-                          </div>
-
-                          <div className="border-t border-divider/50" />
-
-                          {/* Slot B */}
-                          <div
-                            className={slotClasses(bookB)}
-                            onClick={(e) => handleSlotClick(e, bookB)}
-                          >
-                            <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
-                              {bookB?.seed ?? ''}
-                            </span>
-                            <span className="truncate flex-1">{bookB?.title ?? 'tbd'}</span>
-                            {bookB && (
-                              <button
-                                onClick={(e) => toggleBookInfo(e, bookB.id)}
-                                className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5"
-                                title="book info"
-                              >
-                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                  <circle cx="8" cy="8" r="6.5" />
-                                  <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            )}
-                            {myVote === bookB?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
-                          </div>
-
-                          {/* Vote progress bar */}
-                          {isVoting && totalVotes > 0 && !isTied && (
-                            <div className="h-[2px] bg-divider/30">
-                              <div
-                                className="h-full bg-accent/40 transition-all duration-500"
-                                style={{ width: `${(totalVotes / votingMembers.length) * 100}%` }}
-                              />
+                            {/* Slot A */}
+                            <div
+                              className={slotClasses(displayA, isPreviewA)}
+                              onClick={(e) => handleSlotClick(e, bookA)}
+                            >
+                              <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
+                                {displayA?.seed ?? ''}
+                              </span>
+                              <span className="truncate flex-1">{displayA?.title ?? 'tbd'}</span>
+                              {bookA && !isFutureRound && (
+                                <button
+                                  onClick={(e) => toggleBookInfo(e, bookA.id)}
+                                  className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5"
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                    <circle cx="8" cy="8" r="6.5" />
+                                    <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
+                                  </svg>
+                                </button>
+                              )}
+                              {activeChoice === bookA?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
 
-                {round < totalRounds && (
-                  <Connector
-                    pairCount={roundMatchups.length / 2}
-                    pairHeight={wrapperH * 2}
-                  />
-                )}
-              </Fragment>
-            )
-          })}
+                            <div className="border-t border-divider/50" />
+
+                            {/* Slot B */}
+                            <div
+                              className={slotClasses(displayB, isPreviewB)}
+                              onClick={(e) => handleSlotClick(e, bookB)}
+                            >
+                              <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
+                                {displayB?.seed ?? ''}
+                              </span>
+                              <span className="truncate flex-1">{displayB?.title ?? 'tbd'}</span>
+                              {bookB && !isFutureRound && (
+                                <button
+                                  onClick={(e) => toggleBookInfo(e, bookB.id)}
+                                  className="text-ink-muted/40 hover:text-accent flex-shrink-0 transition-colors p-0.5"
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                    <circle cx="8" cy="8" r="6.5" />
+                                    <path d="M8 7v4M8 5.5v-.01" strokeLinecap="round" />
+                                  </svg>
+                                </button>
+                              )}
+                              {activeChoice === bookB?.id && <span className="text-accent text-[8px] flex-shrink-0">●</span>}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {round < totalRounds && (
+                    <Connector
+                      pairCount={roundMatchups.length / 2}
+                      pairHeight={wrapperH * 2}
+                    />
+                  )}
+                </Fragment>
+              )
+            })}
+          </div>
         </div>
+
+        {/* Right sidebar: submit + info */}
+        {!alreadyVoted && !submitted && (
+          <div className="flex-shrink-0 w-48 px-4 pt-2">
+            {allPicked ? (
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream font-medium py-3 text-sm transition-colors"
+              >
+                {submitting ? 'submitting...' : 'submit votes'}
+              </button>
+            ) : (
+              <p className="text-xs text-ink-muted leading-relaxed">
+                tap a book in each matchup to pick a winner, then submit your votes
+              </p>
+            )}
+
+            {Object.keys(picks).length > 0 && !allPicked && (
+              <p className="text-xs text-ink-muted mt-3">
+                {Object.keys(picks).length} of {votableMatchups.length} picked
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Book info popover */}

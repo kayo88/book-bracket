@@ -15,7 +15,7 @@ interface Props {
   onGenerateBracket: () => void
 }
 
-export function Lobby({ session, books, members, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
+export function Lobby({ session, books, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
   const { query, setQuery, results, searching, clearResults } = useBookSearch()
   const [selectedBook, setSelectedBook] = useState<GoogleBookResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -44,7 +44,7 @@ export function Lobby({ session, books, members, submissionDeadline, onSubmitBoo
       <div className="mb-12">
         <h1 className="font-serif text-3xl font-bold text-ink mb-1">book bracket</h1>
         <p className="text-ink-muted">
-          {books.length} book{books.length !== 1 ? 's' : ''} submitted by {members.length} member{members.length !== 1 ? 's' : ''}
+          {books.length}/16 books submitted
         </p>
         {submissionDeadline && (
           <p className="text-ink-muted text-sm mt-1">

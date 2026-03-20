@@ -226,7 +226,7 @@ export function Bracket({
                         className="flex items-center"
                         style={{ height: wrapperH }}
                       >
-                        <div className={`${round === 1 ? 'w-48' : 'w-32'} md:w-56 border text-left transition-all ${
+                        <div className={`${round === 1 ? 'w-48 md:w-72' : round === 2 ? 'w-32 md:w-56' : 'w-32 md:w-48'} border text-left transition-all ${
                           isFutureRound ? 'border-divider/50 opacity-75'
                             : isVoting && canPick ? 'border-accent/30'
                             : isComplete ? 'border-divider opacity-70'

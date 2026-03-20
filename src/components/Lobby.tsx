@@ -99,6 +99,18 @@ export function Lobby({ session, books, totalBookCount, submissionDeadline, onSu
         </div>
       )}
 
+      {/* Organizer: all submissions */}
+      {session.role === 'organizer' && books.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">all submissions</h2>
+          <div className="divide-y divide-divider">
+            {books.map((book) => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Organizer controls */}
       {session.role === 'organizer' && books.length >= 2 && (
         <div className="pt-8 border-t border-divider">

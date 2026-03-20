@@ -1,5 +1,5 @@
 import { Fragment, useState, useMemo } from 'react'
-import type { Matchup as MatchupType, Book, Session, Member } from '../lib/types'
+import type { Matchup as MatchupType, Book, Session, Member, Vote } from '../lib/types'
 
 interface Props {
   matchups: MatchupType[]
@@ -9,6 +9,7 @@ interface Props {
   myVotes: Record<string, string>
   voteCounts: Record<string, Record<string, number>>
   allVotedMatchups: Set<string>
+  votes: Vote[]
   onVote: (matchupId: string, bookId: string) => void
   onTiebreaker: (matchupId: string) => void
   onAdvance: (matchup: MatchupType, winnerId: string) => void
@@ -35,7 +36,7 @@ function Connector({ pairCount, pairHeight }: { pairCount: number; pairHeight: n
 
 export function Bracket({
   matchups, books, session, members, myVotes, voteCounts,
-  allVotedMatchups, onVote, onTiebreaker, onAdvance, currentRound,
+  allVotedMatchups, votes, onVote, onTiebreaker, onAdvance, currentRound,
 }: Props) {
   const bookMap = useMemo(() => new Map(books.map((b) => [b.id, b])), [books])
   const totalRounds = Math.max(...matchups.map((m) => m.round), 0)
@@ -50,6 +51,38 @@ export function Bracket({
     return `round ${round}`
   }
 
+  // Current round matchups that need votes (not pending/complete)
+  const currentRoundMatchups = matchups.filter(m => m.round === currentRound)
+  const votableMatchups = currentRoundMatchups.filter(m => m.status === 'voting')
+
+  // Has the current user voted on all votable matchups?
+  const myDone = votableMatchups.length > 0 && votableMatchups.every(m => myVotes[m.id])
+
+  // How many members have voted on ALL votable matchups?
+  const membersDoneCount = useMemo(() => {
+    if (votableMatchups.length === 0) return 0
+    const votingMembers = members.filter(m => m.role !== 'organizer')
+    return votingMembers.filter(member => {
+      return votableMatchups.every(matchup =>
+        votes.some(v => v.matchup_id === matchup.id && v.member_id === member.id)
+      )
+    }).length
+  }, [votes, votableMatchups, members])
+
+  // Tied matchups (all voted but no clear winner)
+  const tiedMatchups = currentRoundMatchups.filter(m => {
+    if (m.winner || m.status !== 'voting') return false
+    if (!allVotedMatchups.has(m.id)) return false
+    const bookA = m.book_a ? bookMap.get(m.book_a) : null
+    const bookB = m.book_b ? bookMap.get(m.book_b) : null
+    if (!bookA || !bookB) return false
+    const counts = voteCounts[m.id] || {}
+    return (counts[bookA.id] || 0) === (counts[bookB.id] || 0)
+  })
+
+  const tiebreakerMatchups = currentRoundMatchups.filter(m => m.status === 'tiebreaker')
+  const hasTies = tiedMatchups.length > 0 || tiebreakerMatchups.length > 0
+
   const handleVote = (matchupId: string, bookId: string) => {
     onVote(matchupId, bookId)
     setJustVoted(bookId)
@@ -61,21 +94,62 @@ export function Bracket({
     setExpandedBookId(prev => prev === bookId ? null : bookId)
   }
 
-  // Count progress for current round
-  const currentRoundMatchups = matchups.filter(m => m.round === currentRound)
-  const resolvedCount = currentRoundMatchups.filter(m => m.status === 'complete').length
+  const votingMembers = members.filter(m => m.role !== 'organizer')
 
   return (
     <div className="py-8">
-      <div className="px-5 mb-6">
+      <div className="px-5 mb-4">
         <h1 className="font-serif text-3xl font-bold text-ink mb-1">book bracket</h1>
         <p className="text-ink-muted text-sm">
           {roundLabel(currentRound)}
-          {resolvedCount < currentRoundMatchups.length && (
-            <> · {resolvedCount} of {currentRoundMatchups.length} decided</>
-          )}
         </p>
       </div>
+
+      {/* Tie banner */}
+      {hasTies && (
+        <div className="px-5 mb-4">
+          <div className="border border-error/30 bg-error/5 px-4 py-3">
+            {[...tiedMatchups, ...tiebreakerMatchups].map(m => {
+              const bookA = bookMap.get(m.book_a!)!
+              const bookB = bookMap.get(m.book_b!)!
+              return (
+                <div key={m.id} className="mb-2 last:mb-0">
+                  <p className="text-xs text-error">
+                    {bookA.title} vs {bookB.title} is tied — we need a tiebreaker
+                  </p>
+                  {session.role === 'organizer' && (
+                    <div className="flex gap-3 mt-1.5">
+                      <button
+                        onClick={() => onAdvance(m, bookA.id)}
+                        className="text-xs text-accent hover:text-accent-hover"
+                      >
+                        advance "{bookA.title}"
+                      </button>
+                      <button
+                        onClick={() => onAdvance(m, bookB.id)}
+                        className="text-xs text-accent hover:text-accent-hover"
+                      >
+                        advance "{bookB.title}"
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* "You're done" banner */}
+      {myDone && !hasTies && (
+        <div className="px-5 mb-4">
+          <div className="border border-accent/20 bg-accent/5 px-4 py-3">
+            <p className="text-xs text-accent">
+              you're all set for {roundLabel(currentRound)} — {membersDoneCount} of {votingMembers.length} have voted so far
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Bracket */}
       <div className="overflow-x-auto px-5 pb-4">
@@ -96,18 +170,19 @@ export function Bracket({
                     const isVoting = matchup.status === 'voting'
                     const isComplete = matchup.status === 'complete'
                     const isTiebreaker = matchup.status === 'tiebreaker'
+                    const isTied = tiedMatchups.some(t => t.id === matchup.id)
                     const myVote = myVotes[matchup.id] || null
-                    const canVote = isVoting && !myVote
+                    const canVote = isVoting && !myVote && !isTied
                     const counts = voteCounts[matchup.id] || {}
                     const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0)
 
-                    const slotClasses = (book: Book | null, isSlotA: boolean) => {
+                    const slotClasses = (book: Book | null) => {
                       const base = 'h-[37px] flex items-center gap-1.5 px-2.5 text-xs transition-all'
                       if (!book) return `${base} text-ink-muted`
                       if (matchup.winner === book.id) return `${base} text-accent font-medium bg-accent/10`
                       if (matchup.winner && matchup.winner !== book.id) return `${base} text-ink-muted line-through opacity-40`
-                      if (myVote === book.id) return `${base} text-ink bg-accent/5`
                       if (justVoted === book.id) return `${base} text-accent bg-accent/10`
+                      if (myVote === book.id) return `${base} text-ink bg-accent/5 font-medium`
                       if (canVote) return `${base} text-ink hover:bg-accent/5 cursor-pointer`
                       return `${base} text-ink`
                     }
@@ -126,8 +201,8 @@ export function Bracket({
                       >
                         <div
                           className={`w-56 border text-left transition-all ${
-                            isTiebreaker
-                              ? 'border-error/50'
+                            isTied || isTiebreaker
+                              ? 'border-error/40'
                               : isVoting
                               ? 'border-accent/30'
                               : isComplete
@@ -137,7 +212,7 @@ export function Bracket({
                         >
                           {/* Slot A */}
                           <div
-                            className={slotClasses(bookA, true)}
+                            className={slotClasses(bookA)}
                             onClick={(e) => handleSlotClick(e, bookA)}
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
@@ -163,7 +238,7 @@ export function Bracket({
 
                           {/* Slot B */}
                           <div
-                            className={slotClasses(bookB, false)}
+                            className={slotClasses(bookB)}
                             onClick={(e) => handleSlotClick(e, bookB)}
                           >
                             <span className="text-ink-muted/60 w-3 text-right text-[10px] flex-shrink-0">
@@ -186,11 +261,11 @@ export function Bracket({
                           </div>
 
                           {/* Vote progress bar */}
-                          {isVoting && totalVotes > 0 && (
+                          {isVoting && totalVotes > 0 && !isTied && (
                             <div className="h-[2px] bg-divider/30">
                               <div
                                 className="h-full bg-accent/40 transition-all duration-500"
-                                style={{ width: `${(totalVotes / members.length) * 100}%` }}
+                                style={{ width: `${(totalVotes / votingMembers.length) * 100}%` }}
                               />
                             </div>
                           )}
@@ -245,66 +320,6 @@ export function Bracket({
                 <p className="text-[10px] text-ink-muted mt-1">{book.page_count} pages</p>
               )}
             </div>
-          </div>
-        )
-      })()}
-
-      {/* Organizer: tiebreaker controls */}
-      {session.role === 'organizer' && (() => {
-        const tiedMatchups = currentRoundMatchups.filter(m => {
-          if (m.winner || m.status === 'tiebreaker') return false
-          if (!allVotedMatchups.has(m.id)) return false
-          const bookA = m.book_a ? bookMap.get(m.book_a) : null
-          const bookB = m.book_b ? bookMap.get(m.book_b) : null
-          if (!bookA || !bookB) return false
-          const counts = voteCounts[m.id] || {}
-          return (counts[bookA.id] || 0) === (counts[bookB.id] || 0)
-        })
-
-        const tiebreakerMatchups = currentRoundMatchups.filter(m => m.status === 'tiebreaker')
-
-        if (tiedMatchups.length === 0 && tiebreakerMatchups.length === 0) return null
-
-        return (
-          <div className="max-w-lg mx-auto px-5 mt-6 border-t border-divider pt-4">
-            {tiedMatchups.map(m => {
-              const bookA = bookMap.get(m.book_a!)!
-              const bookB = bookMap.get(m.book_b!)!
-              return (
-                <div key={m.id} className="flex items-center gap-3 mb-3">
-                  <span className="text-xs text-ink-muted">
-                    {bookA.title} vs {bookB.title} — tied
-                  </span>
-                  <button
-                    onClick={() => onTiebreaker(m.id)}
-                    className="text-xs text-error hover:opacity-70"
-                  >
-                    open tiebreaker
-                  </button>
-                </div>
-              )
-            })}
-            {tiebreakerMatchups.map(m => {
-              const bookA = bookMap.get(m.book_a!)!
-              const bookB = bookMap.get(m.book_b!)!
-              return (
-                <div key={m.id} className="flex items-center gap-3 mb-3">
-                  <span className="text-xs text-error">tiebreaker:</span>
-                  <button
-                    onClick={() => onAdvance(m, bookA.id)}
-                    className="text-xs text-accent hover:text-accent-hover"
-                  >
-                    advance "{bookA.title}"
-                  </button>
-                  <button
-                    onClick={() => onAdvance(m, bookB.id)}
-                    className="text-xs text-accent hover:text-accent-hover"
-                  >
-                    advance "{bookB.title}"
-                  </button>
-                </div>
-              )
-            })}
           </div>
         )
       })()}

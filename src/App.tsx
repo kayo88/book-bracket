@@ -25,7 +25,7 @@ function App() {
   const { club, members, loading: clubLoading } = useClub(clubId)
   const { books, submitBook, deleteBook } = useBooks(clubId)
   const { matchups, generate, advanceWinner } = useBracket(clubId)
-  const { castVote, getMatchupVotes, getMemberVote, getVoteCounts } = useVoting(clubId)
+  const { votes, castVote, getMatchupVotes, getMemberVote, getVoteCounts } = useVoting(clubId)
 
   // On first load, find or create the club
   useEffect(() => {
@@ -221,7 +221,7 @@ function App() {
         />
       )}
 
-      {club.phase === 'bracket' && session.role === 'organizer' && (
+      {club.phase === 'bracket' && (
         <Bracket
           matchups={matchups}
           books={books}
@@ -230,18 +230,12 @@ function App() {
           myVotes={myVotes}
           voteCounts={voteCountsMap}
           allVotedMatchups={allVotedMatchups}
+          votes={votes}
           onVote={handleVote}
           onTiebreaker={handleOpenTiebreaker}
           onAdvance={handleAdvance}
           currentRound={club.current_round}
         />
-      )}
-
-      {club.phase === 'bracket' && session.role !== 'organizer' && (
-        <div className="max-w-lg mx-auto px-5 py-16 text-center">
-          <h1 className="font-serif text-3xl font-bold text-ink mb-2">book bracket</h1>
-          <p className="text-ink-muted text-sm">the bracket is being set up — hang tight.</p>
-        </div>
       )}
 
       {club.phase === 'complete' && (

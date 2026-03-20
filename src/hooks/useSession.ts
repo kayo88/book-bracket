@@ -53,6 +53,26 @@ export function useSession() {
     setLoading(true)
     setError(null)
     try {
+      // Check if a member with this name already exists — rejoin if so
+      const { data: existing } = await supabase
+        .from('members')
+        .select('*')
+        .eq('club_id', clubId)
+        .ilike('display_name', displayName)
+        .single()
+
+      if (existing) {
+        const restored: Session = {
+          memberId: existing.id,
+          displayName: existing.display_name,
+          role: existing.role,
+          clubId,
+        }
+        saveSession(restored)
+        setSession(restored)
+        return restored
+      }
+
       const { data, error: dbError } = await supabase
         .from('members')
         .insert({ display_name: displayName, role, club_id: clubId })

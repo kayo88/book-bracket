@@ -60,7 +60,11 @@ export function Lobby({ session, books, totalBookCount, submittedNames, submissi
       </div>
 
       {/* Submission area */}
-      {!selectedBook ? (
+      {myBooks.length >= 2 ? (
+        <div className="mb-10">
+          <p className="text-ink-muted text-sm">you're all set — 2 books submitted.</p>
+        </div>
+      ) : !selectedBook ? (
         <div className="mb-10">
           <BookSearch
             query={query}

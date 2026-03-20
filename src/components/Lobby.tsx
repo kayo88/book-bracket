@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Book, Session, GoogleBookResult } from '../lib/types'
+import type { Book, Session, GoogleBookResult, Member } from '../lib/types'
 import { BookSearch } from './BookSearch'
 import { BookCard } from './BookCard'
 import { PitchEditor } from './PitchEditor'
@@ -8,6 +8,7 @@ import { useBookSearch } from '../hooks/useBookSearch'
 interface Props {
   session: Session
   books: Book[]
+  members: Member[]
   totalBookCount: number
   submissionDeadline: string | null
   onSubmitBook: (book: GoogleBookResult, pitch: string | null) => Promise<void>
@@ -15,7 +16,7 @@ interface Props {
   onGenerateBracket: () => void
 }
 
-export function Lobby({ session, books, totalBookCount, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
+export function Lobby({ session, books, members, totalBookCount, submissionDeadline, onSubmitBook, onDeleteBook, onGenerateBracket }: Props) {
   const { query, setQuery, results, searching, clearResults } = useBookSearch()
   const [selectedBook, setSelectedBook] = useState<GoogleBookResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -105,7 +106,11 @@ export function Lobby({ session, books, totalBookCount, submissionDeadline, onSu
           <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-2">all submissions</h2>
           <div className="divide-y divide-divider">
             {books.map((book) => (
-              <BookCard key={book.id} book={book} />
+              <BookCard
+                key={book.id}
+                book={book}
+                submitterName={members.find(m => m.id === book.submitted_by)?.display_name}
+              />
             ))}
           </div>
         </div>

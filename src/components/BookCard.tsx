@@ -5,9 +5,10 @@ interface Props {
   onDelete?: () => void
   onEditPitch?: () => void
   compact?: boolean
+  submitterName?: string
 }
 
-export function BookCard({ book, onDelete, onEditPitch, compact }: Props) {
+export function BookCard({ book, onDelete, onEditPitch, compact, submitterName }: Props) {
   return (
     <div className={`flex gap-4 ${compact ? 'py-2' : 'py-4'}`}>
       {book.cover_url ? (
@@ -26,6 +27,9 @@ export function BookCard({ book, onDelete, onEditPitch, compact }: Props) {
           {book.title}
         </h3>
         <p className="text-ink-light text-sm truncate">{book.authors.join(', ')}</p>
+        {submitterName && (
+          <p className="text-ink-muted text-xs mt-0.5">submitted by {submitterName}</p>
+        )}
         {book.page_count && !compact && (
           <p className="text-ink-muted text-xs mt-0.5">{book.page_count} pages</p>
         )}

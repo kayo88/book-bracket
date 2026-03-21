@@ -53,6 +53,91 @@ function Confetti() {
   )
 }
 
+function RoundCarousel({ matchups, votes, books, memberMap }: {
+  matchups: Matchup[]
+  votes: Vote[]
+  books: Book[]
+  memberMap: Map<string, string>
+}) {
+  const totalRounds = Math.max(...matchups.map(m => m.round))
+  const [viewRound, setViewRound] = useState(totalRounds)
+
+  const roundLabel = (round: number) => {
+    if (round === totalRounds) return 'finals'
+    if (round === totalRounds - 1) return 'semis'
+    if (round === totalRounds - 2) return 'quarters'
+    return `round ${round}`
+  }
+
+  const roundMatchups = matchups
+    .filter(m => m.round === viewRound)
+    .sort((a, b) => a.position - b.position)
+
+  return (
+    <div className="mt-16 pt-8 border-t border-divider">
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setViewRound(r => Math.max(1, r - 1))}
+          disabled={viewRound === 1}
+          className="text-ink-muted hover:text-ink disabled:opacity-20 transition-colors p-1"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M10 4L6 8L10 12" />
+          </svg>
+        </button>
+        <h2 className="text-xs font-medium text-ink-muted tracking-wide">{roundLabel(viewRound)}</h2>
+        <button
+          onClick={() => setViewRound(r => Math.min(totalRounds, r + 1))}
+          disabled={viewRound === totalRounds}
+          className="text-ink-muted hover:text-ink disabled:opacity-20 transition-colors p-1"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M6 4L10 8L6 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="space-y-5">
+        {roundMatchups.map(matchup => {
+          const bookA = books.find(b => b.id === matchup.book_a)
+          const bookB = books.find(b => b.id === matchup.book_b)
+          if (!bookA && !bookB) return null
+          const matchVotes = votes.filter(v => v.matchup_id === matchup.id)
+          const aVoters = matchVotes.filter(v => v.book_id === matchup.book_a).map(v => memberMap.get(v.member_id) || '?')
+          const bVoters = matchVotes.filter(v => v.book_id === matchup.book_b).map(v => memberMap.get(v.member_id) || '?')
+          const aWon = matchup.winner === matchup.book_a
+          const bWon = matchup.winner === matchup.book_b
+          const isBye = !bookA || !bookB
+          return (
+            <div key={matchup.id} className="space-y-2">
+              {bookA && (
+                <div>
+                  <p className={`text-sm font-medium mb-0.5 ${aWon ? 'text-accent' : 'text-ink-light'}`}>
+                    {bookA.title}{!isBye && ` — ${aVoters.length}`}
+                  </p>
+                  {!isBye && <p className="text-xs text-ink-muted">{aVoters.join(', ') || 'no votes'}</p>}
+                  {isBye && <p className="text-xs text-ink-muted">bye</p>}
+                </div>
+              )}
+              {bookB && (
+                <div>
+                  <p className={`text-sm font-medium mb-0.5 ${bWon ? 'text-accent' : 'text-ink-light'}`}>
+                    {bookB.title}{!isBye && ` — ${bVoters.length}`}
+                  </p>
+                  {!isBye && <p className="text-xs text-ink-muted">{bVoters.join(', ') || 'no votes'}</p>}
+                  {isBye && <p className="text-xs text-ink-muted">bye</p>}
+                </div>
+              )}
+              {roundMatchups.length > 1 && matchup !== roundMatchups[roundMatchups.length - 1] && (
+                <div className="border-b border-divider/50 pt-1" />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function Results({ winner, books, members, votes, matchups }: Props) {
   const [showConfetti, setShowConfetti] = useState(true)
 
@@ -105,38 +190,8 @@ export function Results({ winner, books, members, votes, matchups }: Props) {
               time to start reading.
             </p>
 
-            {/* Finals vote breakdown */}
-            {(() => {
-              const finalRound = Math.max(...matchups.map(m => m.round))
-              const finalMatchup = matchups.find(m => m.round === finalRound)
-              if (!finalMatchup) return null
-              const finalVotes = votes.filter(v => v.matchup_id === finalMatchup.id)
-              const bookAVoters = finalVotes.filter(v => v.book_id === finalMatchup.book_a).map(v => memberMap.get(v.member_id) || '?')
-              const bookBVoters = finalVotes.filter(v => v.book_id === finalMatchup.book_b).map(v => memberMap.get(v.member_id) || '?')
-              const bookA = books.find(b => b.id === finalMatchup.book_a)
-              const bookB = books.find(b => b.id === finalMatchup.book_b)
-              if (!bookA || !bookB) return null
-              const aIsWinner = finalMatchup.winner === bookA.id
-              return (
-                <div className="mt-16 pt-8 border-t border-divider">
-                  <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-4">how the finals went</h2>
-                  <div className="space-y-3">
-                    <div>
-                      <p className={`text-sm font-medium mb-0.5 ${aIsWinner ? 'text-accent' : 'text-ink-light'}`}>
-                        {bookA.title} — {bookAVoters.length}
-                      </p>
-                      <p className="text-xs text-ink-muted">{bookAVoters.join(', ') || 'no votes'}</p>
-                    </div>
-                    <div>
-                      <p className={`text-sm font-medium mb-0.5 ${!aIsWinner ? 'text-accent' : 'text-ink-light'}`}>
-                        {bookB.title} — {bookBVoters.length}
-                      </p>
-                      <p className="text-xs text-ink-muted">{bookBVoters.join(', ') || 'no votes'}</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
+            {/* Round-by-round vote carousel */}
+            <RoundCarousel matchups={matchups} votes={votes} books={books} memberMap={memberMap} />
 
             {/* Who submitted what */}
             <div className="mt-16 pt-8 border-t border-divider">

@@ -117,7 +117,7 @@ export function Bracket({
   const lastTapRef = useRef<{ bookId: string; time: number } | null>(null)
 
   const roundLabel = (round: number) => {
-    if (round === totalRounds) return 'final'
+    if (round === totalRounds) return 'FINALS 🏆'
     if (round === totalRounds - 1) return 'semis'
     if (round === totalRounds - 2) return 'quarters'
     return `round ${round}`

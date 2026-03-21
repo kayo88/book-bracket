@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { Book, Member } from '../lib/types'
+import type { Book, Member, Vote, Matchup } from '../lib/types'
 
 interface Props {
   winner: Book | null
   books: Book[]
   members: Member[]
+  votes: Vote[]
+  matchups: Matchup[]
 }
 
 function Confetti() {
@@ -51,7 +53,7 @@ function Confetti() {
   )
 }
 
-export function Results({ winner, books, members }: Props) {
+export function Results({ winner, books, members, votes, matchups }: Props) {
   const [showConfetti, setShowConfetti] = useState(true)
 
   useEffect(() => {
@@ -102,6 +104,39 @@ export function Results({ winner, books, members }: Props) {
             <p className="text-ink-muted text-sm mt-2 text-center">
               time to start reading.
             </p>
+
+            {/* Finals vote breakdown */}
+            {(() => {
+              const finalRound = Math.max(...matchups.map(m => m.round))
+              const finalMatchup = matchups.find(m => m.round === finalRound)
+              if (!finalMatchup) return null
+              const finalVotes = votes.filter(v => v.matchup_id === finalMatchup.id)
+              const bookAVoters = finalVotes.filter(v => v.book_id === finalMatchup.book_a).map(v => memberMap.get(v.member_id) || '?')
+              const bookBVoters = finalVotes.filter(v => v.book_id === finalMatchup.book_b).map(v => memberMap.get(v.member_id) || '?')
+              const bookA = books.find(b => b.id === finalMatchup.book_a)
+              const bookB = books.find(b => b.id === finalMatchup.book_b)
+              if (!bookA || !bookB) return null
+              const aIsWinner = finalMatchup.winner === bookA.id
+              return (
+                <div className="mt-16 pt-8 border-t border-divider">
+                  <h2 className="text-xs font-medium text-ink-muted tracking-wide mb-4">how the finals went</h2>
+                  <div className="space-y-3">
+                    <div>
+                      <p className={`text-sm font-medium mb-0.5 ${aIsWinner ? 'text-accent' : 'text-ink-light'}`}>
+                        {bookA.title} — {bookAVoters.length}
+                      </p>
+                      <p className="text-xs text-ink-muted">{bookAVoters.join(', ') || 'no votes'}</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium mb-0.5 ${!aIsWinner ? 'text-accent' : 'text-ink-light'}`}>
+                        {bookB.title} — {bookBVoters.length}
+                      </p>
+                      <p className="text-xs text-ink-muted">{bookBVoters.join(', ') || 'no votes'}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Who submitted what */}
             <div className="mt-16 pt-8 border-t border-divider">

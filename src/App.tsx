@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Role, Matchup as MatchupType, GoogleBookResult } from './lib/types'
 import { supabase } from './lib/supabase'
 import { useSession } from './hooks/useSession'
@@ -110,23 +110,56 @@ function App() {
       const matchVotes = getMatchupVotes(matchup.id)
       if (matchVotes.length >= members.length && members.length > 0) {
         allVotedMatchups.add(matchup.id)
-
-        // Auto-advance if there's a clear winner and matchup is still voting
-        if (matchup.status === 'voting') {
-          const counts = voteCountsMap[matchup.id]
-          const entries = Object.entries(counts)
-          if (entries.length > 0) {
-            const sorted = entries.sort((a, b) => b[1] - a[1])
-            if (sorted.length === 1 || sorted[0][1] > sorted[1][1]) {
-              // Clear winner — advance
-              handleAdvance(matchup, sorted[0][0])
-            }
-            // If tied, organizer must handle
-          }
-        }
       }
     }
   }
+
+  // Auto-advance matchups with clear winners (in useEffect to avoid race conditions)
+  const advancingRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!session || members.length === 0) return
+    for (const matchup of matchups) {
+      if (matchup.status !== 'voting') continue
+      if (advancingRef.current.has(matchup.id)) continue
+      const matchVotes = getMatchupVotes(matchup.id)
+      if (matchVotes.length < members.length) continue
+      const counts = getVoteCounts(matchup.id)
+      const entries = Object.entries(counts)
+      if (entries.length === 0) continue
+      const sorted = entries.sort((a, b) => b[1] - a[1])
+      if (sorted.length === 1 || sorted[0][1] > sorted[1][1]) {
+        advancingRef.current.add(matchup.id)
+        advanceWinner(matchup, sorted[0][0]).finally(() => {
+          advancingRef.current.delete(matchup.id)
+        })
+      }
+    }
+  }, [session, matchups, members, votes, advanceWinner, getMatchupVotes, getVoteCounts])
+
+  // Safety net: bump round when all current-round matchups are complete
+  useEffect(() => {
+    if (!club || !clubId || club.phase !== 'bracket') return
+    const currentRoundMatchups = matchups.filter(m => m.round === club.current_round)
+    if (currentRoundMatchups.length === 0) return
+    const allComplete = currentRoundMatchups.every(m => m.status === 'complete')
+    if (!allComplete) return
+    const maxRound = Math.max(...matchups.map(m => m.round))
+    if (club.current_round < maxRound) {
+      supabase.from('clubs').update({ current_round: club.current_round + 1 }).eq('id', clubId)
+    } else {
+      supabase.from('clubs').update({ phase: 'complete' }).eq('id', clubId)
+    }
+  }, [matchups, club, clubId])
+
+  // Safety net: flip matchups to 'voting' when both books are filled
+  useEffect(() => {
+    if (!clubId) return
+    for (const matchup of matchups) {
+      if (matchup.status === 'pending' && matchup.book_a && matchup.book_b) {
+        supabase.from('matchups').update({ status: 'voting' }).eq('id', matchup.id)
+      }
+    }
+  }, [matchups, clubId])
 
   // Loading state
   if (clubLoading && clubId) {

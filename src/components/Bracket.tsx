@@ -59,15 +59,6 @@ export function Bracket({
   const votableMatchups = currentRoundMatchups.filter(m => m.status === 'voting')
   const alreadyVoted = votableMatchups.length > 0 && votableMatchups.every(m => myVotes[m.id])
 
-  const membersDoneCount = useMemo(() => {
-    if (votableMatchups.length === 0) return 0
-    return members.filter(member =>
-      votableMatchups.every(matchup =>
-        votes.some(v => v.matchup_id === matchup.id && v.member_id === member.id)
-      )
-    ).length
-  }, [votes, votableMatchups, members])
-
   const tiedMatchups = currentRoundMatchups.filter(m => {
     if (m.winner || m.status !== 'voting') return false
     if (!allVotedMatchups.has(m.id)) return false

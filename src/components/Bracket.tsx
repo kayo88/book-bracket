@@ -164,9 +164,19 @@ export function Bracket({
       {isDone && (
         <div className="px-4 md:px-5 mb-3">
           <div className="border border-accent/20 bg-accent/5 px-3 py-2">
-            <p className="text-xs text-accent">
-              you're all set — waiting on {members.length - membersDoneCount} more
-            </p>
+            <p className="text-xs text-accent mb-1.5">you're all set</p>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              {members.map(member => {
+                const done = votableMatchups.every(matchup =>
+                  votes.some(v => v.matchup_id === matchup.id && v.member_id === member.id)
+                )
+                return (
+                  <span key={member.id} className={`text-[11px] ${done ? 'text-ink-muted line-through' : 'text-ink-light'}`}>
+                    {member.display_name}
+                  </span>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

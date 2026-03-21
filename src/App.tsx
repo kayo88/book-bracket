@@ -272,7 +272,7 @@ function App() {
       )}
 
       {club.phase === 'complete' && (
-        <Results winner={winnerBook} books={books} />
+        <Results winner={winnerBook} books={books} members={members} />
       )}
 
       {/* Tiebreaker modal */}
